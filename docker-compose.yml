@@ -1,0 +1,58 @@
+version:
+    "3.9"
+
+services:
+    db:
+        image: mysql/mysql-server:5.7.35
+        command: --default-authentication-plugin=mysql_native_password
+        restart: always
+        expose:
+            - "3306"
+        environment:
+            - MYSQL_DATABASE=${MYSQL_DATABASE:-mlflow}
+            - MYSQL_USER=${MYSQL_USER:-mlflow}
+            - MYSQL_PASSWORD=${MYSQL_PASSWORD:-mlpass}
+            - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-mlpass}
+        volumes:
+            - dbdata:/var/lib/mysql
+
+    redis:
+        image: redis:6.2.5
+        restart: always
+        expose:
+            - "6379"
+
+    mlflow:
+        restart: always
+        build: ./mlflow
+        expose:
+            - "5000"
+        command: mlflow server --backend-store-uri mysql+pymysql://${MYSQL_USER:-mlflow}:${MYSQL_PASSWORD:-mlpass}@db:3306/${MYSQL_DATABASE:-mlflow} --default-artifact-root /mlflow/ --host 0.0.0.0        
+        depends_on:
+            - db
+        volumes:
+            - mlflow:/mlflow
+
+    web:
+        build:
+            context: ./
+            dockerfile: ./server/Dockerfile
+        command: bash -c "python3 server.py & celery -A server:celery_app worker -c 2 -E"
+        ports:
+            - "8000:8000"
+        depends_on:
+            - mlflow
+            - redis
+
+    jupyter:
+        build:
+            context: ./
+            dockerfile: ./jupyter/Dockerfile
+        ports:
+            - "8888:8888"
+        depends_on:
+            - mlflow
+
+volumes:
+    dbdata:
+    mlflow:
