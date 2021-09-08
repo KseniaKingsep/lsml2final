@@ -11,3 +11,4 @@ flask==2.0.1
 redis==3.5.3
 mlflow==1.20.2
 torchvision==0.10.0
+plotly==5.3.1

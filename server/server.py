@@ -8,6 +8,8 @@ import json
 import numpy as np
 import mlflow
 import mlflow.pytorch
+import plotly
+import plotly.express as px
 import torch
 import yfinance as yf
 
@@ -77,8 +79,10 @@ def generate_fakes(model, n=1, cumsum=True):
 def get_handler(symbol):
     models = client.search_registered_models("name='gan_{}'".format(symbol))
     model = mlflow.pytorch.load_model(model_uri=f'models:/gan_{symbol}/{models[0].latest_versions[0].version}')
-    fake = generate_fakes(model).tolist()
-    return json.dumps(fake)
+    fake = generate_fakes(model)
+    fig = px.line(fake)
+    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    return render_template("fake.html", symbol=symbol, graphJSON=graphJSON)
 
 if __name__ == '__main__':
     app.run("0.0.0.0", 8000) 
